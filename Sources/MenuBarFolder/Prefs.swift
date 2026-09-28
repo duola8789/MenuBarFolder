@@ -75,6 +75,13 @@ enum InstancePrefs {
     static func options(for id: String) -> DisplayOptions { load(folderKey)[id] ?? .default }
     static func set(_ options: DisplayOptions, for id: String) { save(options, id, folderKey) }
 
+    /// All folder aliases in one decode (path → alias), so building a menu
+    /// with many subfolder rows doesn't re-read UserDefaults once per row.
+    static func aliasSnapshot() -> [String: String] {
+        let all: [String: DisplayOptions] = load(folderKey)
+        return all.compactMapValues { $0.alias }
+    }
+
     // Bookmarks
     static func bookmarkOptions(for id: String) -> BookmarkDisplayOptions { load(bookmarkKey)[id] ?? .default }
     static func setBookmark(_ options: BookmarkDisplayOptions, for id: String) { save(options, id, bookmarkKey) }
