@@ -85,6 +85,16 @@ final class FolderPin: BasePin, NSMenuDelegate {
         folderItem.image?.size = NSSize(width: 16, height: 16)
         folderItem.toolTip = "Open “\(displayName)” in Finder"
         menu.addItem(folderItem)
+
+        // Quick actions scoped to this folder, indented under its title.
+        menu.addItem(quickActionItem(title: "Copy Path",
+                                     action: #selector(copyPath),
+                                     tooltip: "Copy the folder's path to the clipboard",
+                                     icon: Self.copyPathIcon))
+        menu.addItem(quickActionItem(title: "Open with Claude Code (iTerm2)",
+                                     action: #selector(openWithClaude),
+                                     tooltip: "Open a new iTerm2 window in this folder and start claude",
+                                     icon: Self.terminalIcon))
         menu.addItem(.separator())
 
         // 3. Folder contents (cache → instant, else placeholder).
@@ -125,6 +135,76 @@ final class FolderPin: BasePin, NSMenuDelegate {
         mi.target = self
         mi.toolTip = "Show a different name in the menu bar (the folder itself is not renamed)"
         return mi
+    }
+
+    private func quickActionItem(title: String, action: Selector, tooltip: String,
+                                 icon: NSImage?) -> NSMenuItem {
+        let mi = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        mi.target = self
+        mi.indentationLevel = 1
+        mi.toolTip = tooltip
+        mi.image = icon
+        return mi
+    }
+
+    /// Small template glyphs for the quick actions (same treatment as the
+    /// bookmark pins' icons).
+    private static let copyPathIcon: NSImage? = {
+        let i = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
+        i?.size = NSSize(width: 15, height: 15); i?.isTemplate = true
+        return i
+    }()
+    private static let terminalIcon: NSImage? = {
+        let i = NSImage(systemSymbolName: "terminal", accessibilityDescription: nil)
+        i?.size = NSSize(width: 15, height: 15); i?.isTemplate = true
+        return i
+    }()
+
+    // MARK: quick actions
+
+    /// Copy this folder's path to the clipboard.
+    @objc private func copyPath() {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(url.path, forType: .string)
+    }
+
+    /// Open a new iTerm2 window cd'd to this folder and start `claude`.
+    /// Two-step form: `create window with default profile command "..."` fails
+    /// silently on iTerm 3.6.11, so we create the window, then type the command
+    /// into its (interactive, login) session — which also means the user's
+    /// shell PATH applies to `claude`. Verified end-to-end incl. quoted paths.
+    @objc private func openWithClaude() {
+        guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.googlecode.iterm2") != nil else {
+            NSSound.beep()
+            return
+        }
+        let command = "cd \(Self.shellQuoted(url.path)) && claude"
+        let source = """
+        tell application "iTerm2"
+            activate
+            create window with default profile
+            tell current session of current window
+                write text "\(Self.applescriptEscaped(command))"
+            end tell
+        end tell
+        """
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = ["-e", source]
+        try? task.run()
+    }
+
+    /// Single-quote a string for interpolation into a shell command.
+    private static func shellQuoted(_ s: String) -> String {
+        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    /// Escape a string for embedding inside an AppleScript double-quoted literal.
+    /// Applied AFTER `shellQuoted`, so the shell receives the quoted form intact.
+    private static func applescriptEscaped(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 
     // MARK: actions
