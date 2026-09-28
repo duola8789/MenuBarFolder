@@ -2,10 +2,10 @@
 //  ActionRowView.swift
 //  MenuBarFolder
 //
-//  A custom NSMenuItem view: one row carrying a title area plus three inline
-//  action buttons (open in Finder, copy path, open with Claude Code), so a
-//  pinned folder stays a single row instead of growing extra full-width
-//  action items.
+//  A custom NSMenuItem view: one row carrying a title area plus four inline
+//  action buttons (open in Finder, copy path, open with Claude Code, open in
+//  IDEA), so a pinned folder stays a single row instead of growing extra
+//  full-width action items.
 //
 //  NSMenu's tracking loop swallows ordinary control events, so the buttons
 //  are plain image views and clicks are hit-tested in mouseDown.
@@ -22,12 +22,14 @@ final class ActionRowView: NSView {
     var onFinder: (() -> Void)?
     var onCopy: (() -> Void)?
     var onClaude: (() -> Void)?
+    var onIDEA: (() -> Void)?
 
     private let titleLabel = NSTextField(labelWithString: "")
     private let iconView = NSImageView()
     private let finderView = NSImageView()
     private let copyView = NSImageView()
     private let claudeView = NSImageView()
+    private let ideaView = NSImageView()
     private let buttonWidth: CGFloat = 20
     private let rowHeight: CGFloat = 24
 
@@ -37,15 +39,15 @@ final class ActionRowView: NSView {
             needsDisplay = true
             let color: NSColor = hovered ? .white : .labelColor
             titleLabel.textColor = color
-            for v in [iconView, finderView, copyView, claudeView] { v.contentTintColor = color }
+            for v in [iconView, finderView, copyView, claudeView, ideaView] { v.contentTintColor = color }
         }
     }
 
     init(title: String, icon: NSImage?) {
-        // Width: leading icon + title (clamped) + three trailing buttons.
+        // Width: leading icon + title (clamped) + four trailing buttons.
         let font = NSFont.menuFont(ofSize: 0)
         let titleWidth = (title as NSString).size(withAttributes: [.font: font]).width
-        var width = 26 + min(titleWidth, 300) + 14 + buttonWidth * 3 + 12
+        var width = 26 + min(titleWidth, 300) + 14 + buttonWidth * 4 + 16
         width = min(max(width, 200), 400)
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: rowHeight))
 
@@ -62,7 +64,7 @@ final class ActionRowView: NSView {
         titleLabel.stringValue = title
         addSubview(titleLabel)
 
-        for (v, symbol) in [(finderView, "folder"), (copyView, "doc.on.doc"), (claudeView, "terminal")] {
+        for (v, symbol) in [(finderView, "folder"), (copyView, "doc.on.doc"), (claudeView, "terminal"), (ideaView, "curlybraces")] {
             if let img = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) {
                 img.isTemplate = true
                 v.image = img
@@ -94,16 +96,20 @@ final class ActionRowView: NSView {
     private var claudeFrame: NSRect {
         NSRect(x: bounds.width - buttonWidth * 3 - 12, y: 4, width: buttonWidth, height: 16)
     }
+    private var ideaFrame: NSRect {
+        NSRect(x: bounds.width - buttonWidth * 4 - 16, y: 4, width: buttonWidth, height: 16)
+    }
 
     override func layout() {
         super.layout()
         iconView.frame = NSRect(x: 5, y: 4, width: 16, height: 16)
         let titleX: CGFloat = iconView.image == nil ? 5 : 26
-        let titleW = claudeFrame.minX - 10 - titleX
+        let titleW = ideaFrame.minX - 10 - titleX
         titleLabel.frame = NSRect(x: titleX, y: 4, width: titleW, height: 16)
         finderView.frame = finderFrame
         copyView.frame = copyFrame
         claudeView.frame = claudeFrame
+        ideaView.frame = ideaFrame
     }
 
     // MARK: hover highlight
@@ -136,6 +142,8 @@ final class ActionRowView: NSView {
             onCopy?()
         } else if claudeFrame.contains(p) {
             onClaude?()
+        } else if ideaFrame.contains(p) {
+            onIDEA?()
         } else if onTitle != nil {
             onTitle?()
         } else {
