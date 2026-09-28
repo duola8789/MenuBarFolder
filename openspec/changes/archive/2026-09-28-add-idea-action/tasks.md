@@ -10,4 +10,4 @@
 - [x] 2.2 点击标题行花括号按钮：`~/projects` 在 IntelliJ IDEA 中作为项目打开，菜单自动关闭；首次弹 Trust Project 则信任后续免弹（specs「行内按钮打开 IDEA」场景）
 - [x] 2.3 点击某子目录行（如含别名行）的花括号按钮：该子目录在 IDEA 中打开；悬停子菜单仍正常展开；hover 行时四个按钮随标题转白（specs「子目录行打开 IDEA」「子目录悬停子菜单不受影响」场景）
 - [x] 2.4 「IDEA 未安装降级」场景（specs `IDEA 未安装时按钮降级`）无法在本机实测（已装 IDEA），以代码审查确认：guard + beep 分支与 `openClaude`（`QuickActions.swift:32`）同构即视为通过
-- [ ] 2.5 Conventional Commits 提交（如 `feat(actions): open-in-idea inline row action on folder pins`），尾部 `Co-Authored-By: Claude Code <noreply@anthropic.com>`
+- [x] 2.5 Conventional Commits 提交（如 `feat(actions): open-in-idea inline row action on folder pins`），尾部 `Co-Authored-By: Claude Code <noreply@anthropic.com>`
