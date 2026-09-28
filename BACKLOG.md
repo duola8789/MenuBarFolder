@@ -39,6 +39,12 @@ inline, Rename… in the submenu header.
       folders (not one parent's children). Rows reuse `ActionRowView`
       (inline actions + per-path alias + Rename…). Storage pattern: copy
       `FolderStore`. Needs add/remove-folder UI.
-- [ ] Carry-over verifications from `add-folder-quick-actions`: iTerm2
+- [x] Carry-over verifications from `add-folder-quick-actions`: iTerm2
       cold-start path (quit iTerm, click the terminal button once) and the
-      macOS Automation permission prompt on first real use.
+      macOS Automation permission prompt on first real use. Done in
+      `alias-aware-sorting` (2026-09-28): the cold-start test surfaced a real
+      bug — by-name `tell application "iTerm2"` only resolves while the app
+      runs (LS registers the bundle as "iTerm"); fixed by by-bundle-ID
+      targeting plus launch-window idle detection (avoids a second empty
+      window). Prompt verified: appears once, allow, flow proceeds. Residual
+      ~3 s cold delay is login-shell init, not app overhead.
