@@ -72,39 +72,42 @@ final class FolderPin: BasePin, NSMenuDelegate {
 
     private func layout(_ menu: NSMenu) {
         menu.removeAllItems()
+        let url = self.url   // capture for the row's action closures
 
         // 1. App submenu (program controls).
         menu.addItem(makeAppMenuItem())
         menu.addItem(.separator())
 
-        // 2. The folder itself (click → Finder) + its own Display settings.
-        let folderItem = NSMenuItem(title: displayName.ellipsizedMenuTitle(),
-                                    action: #selector(openInFinder), keyEquivalent: "")
-        folderItem.target = self
-        folderItem.image = NSWorkspace.shared.icon(forFile: url.path)
-        folderItem.image?.size = NSSize(width: 16, height: 16)
-        folderItem.toolTip = "Open “\(displayName)” in Finder"
+        // 2. The folder itself, as ONE row: title area opens it in Finder,
+        //    two inline buttons (copy path, open with Claude Code) at right.
+        let row = ActionRowView(title: displayName,
+                                icon: NSWorkspace.shared.icon(forFile: url.path))
+        row.toolTip = url.path
+        row.onTitle = { [weak self] in self?.openInFinder() }
+        row.onFinder = { QuickActions.openInFinder(url) }
+        row.onCopy = { QuickActions.copyPath(url) }
+        row.onClaude = { QuickActions.openClaude(url) }
+        let folderItem = NSMenuItem()
+        folderItem.view = row
         menu.addItem(folderItem)
-
-        // Quick actions scoped to this folder, indented under its title.
-        menu.addItem(quickActionItem(title: "Copy Path",
-                                     action: #selector(copyPath),
-                                     tooltip: "Copy the folder's path to the clipboard",
-                                     icon: Self.copyPathIcon))
-        menu.addItem(quickActionItem(title: "Open with Claude Code (iTerm2)",
-                                     action: #selector(openWithClaude),
-                                     tooltip: "Open a new iTerm2 window in this folder and start claude",
-                                     icon: Self.terminalIcon))
         menu.addItem(.separator())
 
         // 3. Folder contents (cache → instant, else placeholder).
+        var contentItems: [NSMenuItem] = []
         if let listing {
-            for item in contentDelegate.buildItems(from: listing) { menu.addItem(item) }
+            contentItems = contentDelegate.buildItems(from: listing)
+            for item in contentItems { menu.addItem(item) }
         } else {
             let loading = NSMenuItem(title: "Loading…", action: nil, keyEquivalent: "")
             loading.isEnabled = false
             menu.addItem(loading)
         }
+
+        // Uniform row width: the title row and the content rows share one
+        // width, so the trailing action buttons line up in a single column.
+        let rowViews = ([row] + contentItems.compactMap { $0.view as? ActionRowView })
+        let commonWidth = max(rowViews.map(\.frame.width).max() ?? 0, 260)
+        rowViews.forEach { $0.setCommonWidth(commonWidth) }
     }
 
     /// This folder's own sort + grouping, shown as a section in the
@@ -137,76 +140,6 @@ final class FolderPin: BasePin, NSMenuDelegate {
         return mi
     }
 
-    private func quickActionItem(title: String, action: Selector, tooltip: String,
-                                 icon: NSImage?) -> NSMenuItem {
-        let mi = NSMenuItem(title: title, action: action, keyEquivalent: "")
-        mi.target = self
-        mi.indentationLevel = 1
-        mi.toolTip = tooltip
-        mi.image = icon
-        return mi
-    }
-
-    /// Small template glyphs for the quick actions (same treatment as the
-    /// bookmark pins' icons).
-    private static let copyPathIcon: NSImage? = {
-        let i = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
-        i?.size = NSSize(width: 15, height: 15); i?.isTemplate = true
-        return i
-    }()
-    private static let terminalIcon: NSImage? = {
-        let i = NSImage(systemSymbolName: "terminal", accessibilityDescription: nil)
-        i?.size = NSSize(width: 15, height: 15); i?.isTemplate = true
-        return i
-    }()
-
-    // MARK: quick actions
-
-    /// Copy this folder's path to the clipboard.
-    @objc private func copyPath() {
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(url.path, forType: .string)
-    }
-
-    /// Open a new iTerm2 window cd'd to this folder and start `claude`.
-    /// Two-step form: `create window with default profile command "..."` fails
-    /// silently on iTerm 3.6.11, so we create the window, then type the command
-    /// into its (interactive, login) session — which also means the user's
-    /// shell PATH applies to `claude`. Verified end-to-end incl. quoted paths.
-    @objc private func openWithClaude() {
-        guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.googlecode.iterm2") != nil else {
-            NSSound.beep()
-            return
-        }
-        let command = "cd \(Self.shellQuoted(url.path)) && claude"
-        let source = """
-        tell application "iTerm2"
-            activate
-            create window with default profile
-            tell current session of current window
-                write text "\(Self.applescriptEscaped(command))"
-            end tell
-        end tell
-        """
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = ["-e", source]
-        try? task.run()
-    }
-
-    /// Single-quote a string for interpolation into a shell command.
-    private static func shellQuoted(_ s: String) -> String {
-        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
-    }
-
-    /// Escape a string for embedding inside an AppleScript double-quoted literal.
-    /// Applied AFTER `shellQuoted`, so the shell receives the quoted form intact.
-    private static func applescriptEscaped(_ s: String) -> String {
-        s.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-    }
-
     // MARK: actions
 
     @objc private func openInFinder() { NSWorkspace.shared.open(url) }
@@ -223,21 +156,17 @@ final class FolderPin: BasePin, NSMenuDelegate {
     }
 
     /// Open (or re-open) the rename sheet, pre-filled with the current alias.
+    /// Blank/whitespace-only confirm clears the alias; cancel is a no-op.
     @objc private func renameFolder() {
         let window = aliasWindow ?? FolderAliasWindow()
         aliasWindow = window
-        window.show(prefill: options.alias ?? "",
-                    confirmTarget: self, confirmAction: #selector(applyAlias(_:)))
-    }
-
-    /// Confirm: blank/whitespace-only input clears the alias.
-    @objc private func applyAlias(_ sender: Any?) {
-        let raw = aliasWindow?.text ?? ""
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        options.alias = trimmed.isEmpty ? nil : trimmed
-        persistOptions()
-        refreshChrome()
-        aliasWindow?.orderOut(nil)
+        window.show(prefill: options.alias ?? "") { [weak self] raw in
+            guard let self else { return }
+            let trimmed = raw.trimmingCharacters(in: .whitespaces)
+            self.options.alias = trimmed.isEmpty ? nil : trimmed
+            self.persistOptions()
+            self.refreshChrome()
+        }
     }
 
     private func persistOptions() {

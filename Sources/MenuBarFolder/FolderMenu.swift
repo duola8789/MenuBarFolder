@@ -180,8 +180,39 @@ final class FolderMenuDelegate: NSObject, NSMenuDelegate {
 
     private func render(_ listing: DirListing, into menu: NSMenu) {
         menu.removeAllItems()
-        for item in buildItems(from: listing) {
-            menu.addItem(item)
+        // Header: rename THIS folder — its row in the parent menu shows the
+        // alias. Only submenus render through here; the pin's own dropdown
+        // has Rename… in its display section instead.
+        menu.addItem(renameItem())
+        menu.addItem(.separator())
+        let items = buildItems(from: listing)
+        // Uniform row width so this submenu's action buttons line up too.
+        let rows = items.compactMap { $0.view as? ActionRowView }
+        if let w = rows.map(\.frame.width).max() {
+            rows.forEach { $0.setCommonWidth(max(w, 260)) }
+        }
+        for item in items { menu.addItem(item) }
+    }
+
+    /// Rename window for THIS folder (lazily created, reused).
+    private var renameWindow: FolderAliasWindow?
+
+    private func renameItem() -> NSMenuItem {
+        let mi = NSMenuItem(title: "Rename…", action: #selector(openRename), keyEquivalent: "")
+        mi.target = self
+        mi.toolTip = "Show a different name in the parent menu (the folder itself is not renamed)"
+        return mi
+    }
+
+    @objc private func openRename() {
+        let window = renameWindow ?? FolderAliasWindow()
+        renameWindow = window
+        let path = url.standardizedFileURL.path
+        window.show(prefill: InstancePrefs.options(for: path).alias ?? "") { raw in
+            let trimmed = raw.trimmingCharacters(in: .whitespaces)
+            var opts = InstancePrefs.options(for: path)
+            opts.alias = trimmed.isEmpty ? nil : trimmed
+            InstancePrefs.set(opts, for: path)
         }
     }
 
@@ -196,15 +227,29 @@ final class FolderMenuDelegate: NSObject, NSMenuDelegate {
         if listing.entries.isEmpty { return [disabledItem("(empty)")] }
 
         var items: [NSMenuItem] = []
+        // One alias lookup for the whole menu (each row would otherwise
+        // re-decode the entire per-folder settings dictionary).
+        let aliases = InstancePrefs.aliasSnapshot()
 
         for (i, entry) in listing.entries.enumerated() {
             if listing.separatorAfter > 0, i == listing.separatorAfter {
                 items.append(.separator())
             }
-            let item = makeItem(for: entry.url)
             if entry.isDir {
+                // One row with inline actions (copy path, open with Claude
+                // Code); hovering it opens the lazily-populated submenu. The
+                // row title prefers this folder's saved alias.
+                let title = aliases[entry.url.standardizedFileURL.path] ?? entry.url.displayName
+                let row = ActionRowView(title: title, icon: Self.icon(for: entry.url))
+                row.toolTip = entry.url.path
+                row.onFinder = { QuickActions.openInFinder(entry.url) }
+                row.onCopy = { QuickActions.copyPath(entry.url) }
+                row.onClaude = { QuickActions.openClaude(entry.url) }
+                let item = NSMenuItem()
+                item.view = row
+
                 // Submenu, populated lazily by its own delegate.
-                let submenu = NSMenu(title: entry.url.displayName)
+                let submenu = NSMenu(title: title)
                 let delegate = FolderMenuDelegate(url: entry.url, owner: owner)
                 delegate.options = options   // subfolders inherit this folder's sort/grouping
                 submenu.delegate = delegate
@@ -212,6 +257,7 @@ final class FolderMenuDelegate: NSObject, NSMenuDelegate {
                 item.submenu = submenu
                 items.append(item)
             } else {
+                let item = makeItem(for: entry.url)
                 items.append(item)
                 // Hold Option to reveal the file in Finder instead of opening.
                 items.append(makeRevealAlternate(for: entry.url))
