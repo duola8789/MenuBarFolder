@@ -24,11 +24,13 @@ Row-action architecture rule: inline buttons are frequent *instant* actions
 Rename… + optional contents). Implemented so far: Finder / Copy Path / Claude
 inline, Rename… in the submenu header.
 
-- [ ] Open in IDEA button — 4th inline action. Add `QuickActions.openInIDEA`
+- [x] Open in IDEA button — 4th inline action. Add `QuickActions.openInIDEA`
       (NSWorkspace open-with-app, pattern from `BookmarksPin.openBookmark`);
       detect the installed flavor (`com.jetbrains.intellij` or CE
       `com.jetbrains.intellij.ce`), beep when absent (pattern from
-      `openClaude`). Pick an SF Symbol for the button.
+      `openClaude`). Pick an SF Symbol for the button. — done 2026-09-28
+      (`add-idea-action`, commit 9bb4131; symbol: `curlybraces`; note:
+      modern IDEA builds incl. CE report bundle id `com.jetbrains.intellij`)
 - [ ] Per-pin "show folder contents" toggle in `DisplayOptions` — with it
       off, a row's hover submenu becomes a pure action palette (Rename… +
       text versions of every action, no file listing). This realizes the
