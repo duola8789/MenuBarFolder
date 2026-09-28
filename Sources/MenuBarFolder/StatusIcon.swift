@@ -3,12 +3,20 @@
 //  MenuBarFolder
 //
 //  Builds the composite menu-bar image: a folder glyph with the pinned
-//  folder's first two letters drawn large over its bottom-right corner.
+//  folder's leading letters drawn large over its bottom-right corner.
 //
 
 import AppKit
 
 enum StatusIcon {
+
+    /// Letters for the status icon: the name's first 2 characters, or just 1
+    /// when it starts with a wide (CJK) glyph — two full-width characters span
+    /// the whole 22pt canvas and collide with the folder outline.
+    static func iconLetters(for name: String) -> String {
+        let wide = (name.unicodeScalars.first?.value ?? 0) > 0x2E80
+        return String(name.prefix(wide ? 1 : 2))
+    }
 
     /// Compose a single template image. A transparent "notch" is punched
     /// behind the letters so the folder outline doesn't blur into them.
