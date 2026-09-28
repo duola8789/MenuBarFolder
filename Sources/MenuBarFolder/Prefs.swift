@@ -77,9 +77,12 @@ enum InstancePrefs {
 
     /// All folder aliases in one decode (path → alias), so building a menu
     /// with many subfolder rows doesn't re-read UserDefaults once per row.
+    /// Empty-string aliases are dropped: they can't come from the UI (the
+    /// rename entries turn blank input into nil), so one means hand-tampered
+    /// data — treat it as unset and fall back to the folder's real name.
     static func aliasSnapshot() -> [String: String] {
         let all: [String: DisplayOptions] = load(folderKey)
-        return all.compactMapValues { $0.alias }
+        return all.compactMapValues { $0.alias }.filter { !$0.value.isEmpty }
     }
 
     // Bookmarks
