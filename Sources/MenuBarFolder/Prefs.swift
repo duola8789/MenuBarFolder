@@ -30,6 +30,11 @@ enum SortMode: String, CaseIterable, Codable, Sendable {
 struct DisplayOptions: Codable, Sendable {
     var sort: SortMode
     var foldersOnTop: Bool
+    /// Optional display-only name shown in the menu bar instead of the folder's
+    /// real name. `nil` (also: absent in previously saved JSON) means "use the
+    /// folder's own display name" — the field is optional so old settings
+    /// without it still decode.
+    var alias: String?
 
     /// Default for a folder that has never been configured.
     static let `default` = DisplayOptions(sort: .dateAdded, foldersOnTop: true)

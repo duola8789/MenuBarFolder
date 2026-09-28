@@ -16,6 +16,7 @@ final class FolderPin: BasePin, NSMenuDelegate {
     private let contentDelegate: FolderMenuDelegate
     private var options: DisplayOptions
     private var listing: DirListing?
+    private var aliasWindow: FolderAliasWindow?
 
     init(url: URL, app: AppDelegate) {
         self.url = url
@@ -27,13 +28,25 @@ final class FolderPin: BasePin, NSMenuDelegate {
 
         if let button = statusItem.button {
             button.imagePosition = .imageOnly
-            button.image = StatusIcon.make(letters: String(url.displayName.prefix(2)))
-            button.toolTip = "MenuBarFolder — \(url.displayName)"
+            button.image = StatusIcon.make(letters: StatusIcon.iconLetters(for: displayName))
+            button.toolTip = "MenuBarFolder — \(displayName)"
         }
 
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
+    }
+
+    /// The name shown in the menu bar: the user's alias, or the folder's own
+    /// display name. Display-only — the real directory is never touched.
+    private var displayName: String { options.alias ?? url.displayName }
+
+    /// Re-apply the alias to the status-bar chrome after it changes. The menu
+    /// title needs no help — `layout()` rebuilds it on every open.
+    private func refreshChrome() {
+        guard let button = statusItem.button else { return }
+        button.image = StatusIcon.make(letters: StatusIcon.iconLetters(for: displayName))
+        button.toolTip = "MenuBarFolder — \(displayName)"
     }
 
     /// Drop the cached contents so the next open re-reads with current options.
@@ -65,12 +78,12 @@ final class FolderPin: BasePin, NSMenuDelegate {
         menu.addItem(.separator())
 
         // 2. The folder itself (click → Finder) + its own Display settings.
-        let folderItem = NSMenuItem(title: url.displayName.ellipsizedMenuTitle(),
+        let folderItem = NSMenuItem(title: displayName.ellipsizedMenuTitle(),
                                     action: #selector(openInFinder), keyEquivalent: "")
         folderItem.target = self
         folderItem.image = NSWorkspace.shared.icon(forFile: url.path)
         folderItem.image?.size = NSSize(width: 16, height: 16)
-        folderItem.toolTip = "Open “\(url.displayName)” in Finder"
+        folderItem.toolTip = "Open “\(displayName)” in Finder"
         menu.addItem(folderItem)
         menu.addItem(.separator())
 
@@ -103,7 +116,15 @@ final class FolderPin: BasePin, NSMenuDelegate {
         fot.target = self
         fot.state = options.foldersOnTop ? .on : .off
         items.append(fot)
+        items.append(renameMenuItem())
         return items
+    }
+
+    private func renameMenuItem() -> NSMenuItem {
+        let mi = NSMenuItem(title: "Rename…", action: #selector(renameFolder), keyEquivalent: "")
+        mi.target = self
+        mi.toolTip = "Show a different name in the menu bar (the folder itself is not renamed)"
+        return mi
     }
 
     // MARK: actions
@@ -121,9 +142,32 @@ final class FolderPin: BasePin, NSMenuDelegate {
         persistOptions()
     }
 
+    /// Open (or re-open) the rename sheet, pre-filled with the current alias.
+    @objc private func renameFolder() {
+        let window = aliasWindow ?? FolderAliasWindow()
+        aliasWindow = window
+        window.show(prefill: options.alias ?? "",
+                    confirmTarget: self, confirmAction: #selector(applyAlias(_:)))
+    }
+
+    /// Confirm: blank/whitespace-only input clears the alias.
+    @objc private func applyAlias(_ sender: Any?) {
+        let raw = aliasWindow?.text ?? ""
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        options.alias = trimmed.isEmpty ? nil : trimmed
+        persistOptions()
+        refreshChrome()
+        aliasWindow?.orderOut(nil)
+    }
+
     private func persistOptions() {
         InstancePrefs.set(options, for: id)
         contentDelegate.options = options
         listing = nil   // re-read with the new order on next open
+    }
+
+    override func teardown() {
+        aliasWindow?.orderOut(nil)
+        super.teardown()
     }
 }
