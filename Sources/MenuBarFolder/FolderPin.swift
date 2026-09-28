@@ -79,7 +79,8 @@ final class FolderPin: BasePin, NSMenuDelegate {
         menu.addItem(.separator())
 
         // 2. The folder itself, as ONE row: title area opens it in Finder,
-        //    two inline buttons (copy path, open with Claude Code) at right.
+        //    four inline buttons (copy path, open with Claude Code, open in
+        //    IDEA, Finder) at right.
         let row = ActionRowView(title: displayName,
                                 icon: NSWorkspace.shared.icon(forFile: url.path))
         row.toolTip = url.path
@@ -87,6 +88,7 @@ final class FolderPin: BasePin, NSMenuDelegate {
         row.onFinder = { QuickActions.openInFinder(url) }
         row.onCopy = { QuickActions.copyPath(url) }
         row.onClaude = { QuickActions.openClaude(url) }
+        row.onIDEA = { QuickActions.openInIDEA(url) }
         let folderItem = NSMenuItem()
         folderItem.view = row
         menu.addItem(folderItem)

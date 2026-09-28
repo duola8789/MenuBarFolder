@@ -2,9 +2,10 @@
 //  QuickActions.swift
 //  MenuBarFolder
 //
-//  The two row-level quick actions, shared by the pin title row and the
-//  subfolder rows: copy a folder's POSIX path, and open a new iTerm2
-//  window cd'd to it with `claude` running.
+//  The row-level quick actions, shared by the pin title row and the
+//  subfolder rows: open a folder in Finder, copy its POSIX path, open a
+//  new iTerm2 window cd'd to it with `claude` running, and open it as a
+//  project in IntelliJ IDEA.
 //
 
 import AppKit
@@ -47,6 +48,22 @@ enum QuickActions {
         task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         task.arguments = ["-e", source]
         try? task.run()
+    }
+
+    /// Open the folder as a project in IntelliJ IDEA. Modern builds of both
+    /// Ultimate and Community report bundle id `com.jetbrains.intellij`, so
+    /// whichever edition LaunchServices resolves wins; `.ce` is kept as a
+    /// fallback for older installs. Beeps when no IDEA is found.
+    static func openInIDEA(_ url: URL) {
+        let bundleIDs = ["com.jetbrains.intellij", "com.jetbrains.intellij.ce"]
+        guard let appURL = bundleIDs.compactMap({
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0)
+        }).first else {
+            NSSound.beep()
+            return
+        }
+        NSWorkspace.shared.open([url], withApplicationAt: appURL,
+                                configuration: NSWorkspace.OpenConfiguration())
     }
 
     /// Single-quote a string for interpolation into a shell command.

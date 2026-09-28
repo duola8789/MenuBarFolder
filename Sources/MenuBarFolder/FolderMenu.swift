@@ -237,14 +237,15 @@ final class FolderMenuDelegate: NSObject, NSMenuDelegate {
             }
             if entry.isDir {
                 // One row with inline actions (copy path, open with Claude
-                // Code); hovering it opens the lazily-populated submenu. The
-                // row title prefers this folder's saved alias.
+                // Code, open in IDEA); hovering it opens the lazily-populated
+                // submenu. The row title prefers this folder's saved alias.
                 let title = aliases[entry.url.standardizedFileURL.path] ?? entry.url.displayName
                 let row = ActionRowView(title: title, icon: Self.icon(for: entry.url))
                 row.toolTip = entry.url.path
                 row.onFinder = { QuickActions.openInFinder(entry.url) }
                 row.onCopy = { QuickActions.copyPath(entry.url) }
                 row.onClaude = { QuickActions.openClaude(entry.url) }
+                row.onIDEA = { QuickActions.openInIDEA(entry.url) }
                 let item = NSMenuItem()
                 item.view = row
 
