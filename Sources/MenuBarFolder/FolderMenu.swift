@@ -120,13 +120,19 @@ final class FolderMenuDelegate: NSObject, NSMenuDelegate {
         }
         var metas: [Meta] = []
         metas.reserveCapacity(entries.count)
+        // One alias lookup for the whole read (same snapshot, and same path key,
+        // as the render side in buildItems — so sort order matches shown names).
+        let aliases = InstancePrefs.aliasSnapshot()
         for entry in entries {
             let v = try? entry.resourceValues(forKeys: Set(keys))
             let isPkg = v?.isPackage ?? false              // .app / .framework → treat as a file
             let isDir = (v?.isDirectory ?? false) && !isPkg
+            let localizedName = v?.localizedName ?? entry.lastPathComponent
             metas.append(Meta(
                 url: entry,
-                name: v?.localizedName ?? entry.lastPathComponent,
+                // Sort key = displayed name: a subfolder's alias wins over the
+                // filesystem name (folders only — matching the render side).
+                name: isDir ? aliases[entry.standardizedFileURL.path] ?? localizedName : localizedName,
                 isDir: isDir,
                 added: v?.addedToDirectoryDate ?? v?.creationDate,
                 modified: v?.contentModificationDate,
