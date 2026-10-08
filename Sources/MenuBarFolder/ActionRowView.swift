@@ -31,7 +31,7 @@ final class ActionRowView: NSView {
     private let claudeView = NSImageView()
     private let ideaView = NSImageView()
     private let buttonWidth: CGFloat = 20
-    private let rowHeight: CGFloat = 24
+    private let rowHeight: CGFloat = 28
 
     /// Hover state (custom rows get no system highlight, so we draw our own).
     private var hovered = false {
@@ -44,10 +44,13 @@ final class ActionRowView: NSView {
     }
 
     init(title: String, icon: NSImage?) {
-        // Width: leading icon + title (clamped) + four trailing buttons.
+        // Width: leading inset + icon + title (clamped) + four trailing
+        // buttons + trailing inset. Insets match standard NSMenuItem content
+        // padding so view-backed rows don't sit flush against the menu edge
+        // next to regular items.
         let font = NSFont.menuFont(ofSize: 0)
         let titleWidth = (title as NSString).size(withAttributes: [.font: font]).width
-        var width = 26 + min(titleWidth, 300) + 14 + buttonWidth * 4 + 16
+        var width = 40 + min(titleWidth, 300) + 14 + buttonWidth * 4 + 20
         width = min(max(width, 200), 400)
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: rowHeight))
 
@@ -88,24 +91,26 @@ final class ActionRowView: NSView {
     // MARK: layout
 
     private var finderFrame: NSRect {
-        NSRect(x: bounds.width - buttonWidth - 4, y: 4, width: buttonWidth, height: 16)
+        NSRect(x: bounds.width - buttonWidth - 8, y: 6, width: buttonWidth, height: 16)
     }
     private var copyFrame: NSRect {
-        NSRect(x: bounds.width - buttonWidth * 2 - 8, y: 4, width: buttonWidth, height: 16)
+        NSRect(x: bounds.width - buttonWidth * 2 - 12, y: 6, width: buttonWidth, height: 16)
     }
     private var claudeFrame: NSRect {
-        NSRect(x: bounds.width - buttonWidth * 3 - 12, y: 4, width: buttonWidth, height: 16)
+        NSRect(x: bounds.width - buttonWidth * 3 - 16, y: 6, width: buttonWidth, height: 16)
     }
     private var ideaFrame: NSRect {
-        NSRect(x: bounds.width - buttonWidth * 4 - 16, y: 4, width: buttonWidth, height: 16)
+        NSRect(x: bounds.width - buttonWidth * 4 - 20, y: 6, width: buttonWidth, height: 16)
     }
 
     override func layout() {
         super.layout()
-        iconView.frame = NSRect(x: 5, y: 4, width: 16, height: 16)
-        let titleX: CGFloat = iconView.image == nil ? 5 : 26
+        // Leading inset 16pt — tuned by eye against the standard menu
+        // items above (user-directed value, not a guessed constant).
+        iconView.frame = NSRect(x: 16, y: 6, width: 16, height: 16)
+        let titleX: CGFloat = iconView.image == nil ? 16 : 40
         let titleW = ideaFrame.minX - 10 - titleX
-        titleLabel.frame = NSRect(x: titleX, y: 4, width: titleW, height: 16)
+        titleLabel.frame = NSRect(x: titleX, y: 6, width: titleW, height: 16)
         finderView.frame = finderFrame
         copyView.frame = copyFrame
         claudeView.frame = claudeFrame
