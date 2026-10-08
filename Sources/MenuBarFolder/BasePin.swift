@@ -4,7 +4,7 @@
 //
 //  Shared base for a single menu-bar icon. Concrete pins (a folder, a browser
 //  bookmark source) own their content; the base owns the status item and the
-//  common top "MenuBarFolder" submenu (program controls + add/close commands).
+//  common top "PinFold" submenu (program controls + add/close commands).
 //
 
 import AppKit
@@ -39,10 +39,10 @@ class BasePin: NSObject {
     /// is touched.
     var closeTitle: String { "Close This Menu Instance" }
 
-    /// The top "MenuBarFolder ▸" item: program controls and add/close commands.
+    /// The top "PinFold ▸" item: program controls and add/close commands.
     /// Lives at the top of every pin's menu so it never requires scrolling.
     func makeAppMenuItem() -> NSMenuItem {
-        let appItem = NSMenuItem(title: "MenuBarFolder", action: nil, keyEquivalent: "")
+        let appItem = NSMenuItem(title: "PinFold", action: nil, keyEquivalent: "")
         appItem.image = AppIcon.make(size: 36)
         appItem.image?.size = NSSize(width: 18, height: 18)
 
@@ -84,7 +84,7 @@ class BasePin: NSObject {
 
         menu.addItem(.separator())
 
-        menu.addItem(NSMenuItem(title: "Quit MenuBarFolder",
+        menu.addItem(NSMenuItem(title: "Quit PinFold",
                                 action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         appItem.submenu = menu
         return appItem

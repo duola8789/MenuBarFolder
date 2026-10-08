@@ -1,12 +1,17 @@
-# MenuBarFolder
+# PinFold
 
-**Keep your most-used folders one click away — right in the macOS menu bar.**
+**Pin your folders to the macOS menu bar — and launch straight into them.**
+
+> **PinFold** is a fork of [MenuBarFolder](http://ctrl8.com/MenuBarFolder)
+> by iLya Os (MIT), renamed and extended: folder groups turn the menu bar
+> into a launcher for hand-picked projects, with one-click Claude Code /
+> IDEA / Finder actions and a Settings manager.
 
 We all have *that* folder. Downloads. Screenshots. The desktop graveyard of
 "I'll sort this later." You open it dozens of times a day, and every time it's
 the same little ritual: find a Finder window, click around, sigh.
 
-MenuBarFolder turns that ritual into a single click. Pin any folder — or several
+PinFold turns that ritual into a single click. Pin any folder — or several
 — to your menu bar, and its contents are always a tap away: open files in their
 default app, walk into subfolders through nested submenus, all without a Finder
 window in sight. Each pinned folder gets its own tidy icon, and the whole setup

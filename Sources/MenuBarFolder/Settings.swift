@@ -157,7 +157,7 @@ private struct GeneralSettingsTab: View {
 
             Section("Folder groups") {
                 if model.groups.isEmpty {
-                    Text("None yet — use “New Folder Group…” in any MenuBarFolder menu.")
+                    Text("None yet — use “New Folder Group…” in any PinFold menu.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -354,7 +354,7 @@ final class SettingsWindowController {
             self.model = model
             let hosting = NSHostingController(rootView: SettingsView(model: model))
             let win = NSWindow(contentViewController: hosting)
-            win.title = "MenuBarFolder Settings"
+            win.title = "PinFold Settings"
             win.styleMask = [.titled, .closable]
             win.isReleasedWhenClosed = false
             self.window = win

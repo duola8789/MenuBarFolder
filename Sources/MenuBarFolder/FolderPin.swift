@@ -29,7 +29,7 @@ final class FolderPin: BasePin, NSMenuDelegate {
         if let button = statusItem.button {
             button.imagePosition = .imageOnly
             button.image = StatusIcon.make(letters: StatusIcon.iconLetters(for: displayName))
-            button.toolTip = "MenuBarFolder — \(displayName)"
+            button.toolTip = "PinFold — \(displayName)"
         }
 
         let menu = NSMenu()
@@ -46,7 +46,7 @@ final class FolderPin: BasePin, NSMenuDelegate {
     private func refreshChrome() {
         guard let button = statusItem.button else { return }
         button.image = StatusIcon.make(letters: StatusIcon.iconLetters(for: displayName))
-        button.toolTip = "MenuBarFolder — \(displayName)"
+        button.toolTip = "PinFold — \(displayName)"
     }
 
     /// Drop the cached contents so the next open re-reads with current options.

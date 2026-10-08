@@ -8,9 +8,9 @@
 import Foundation
 
 enum AppInfo {
-    static let name = "MenuBarFolder"
+    static let name = "PinFold"
     static let version = "1.2.0"  // folder groups (launcher), Settings management, Start-at-Login fix
-    static let tagline = "Your favourite folders, one click away in the menu bar."
+    static let tagline = "Pin your folders to the menu bar."
 
     static let author = "iLya Os"
     static let homepage = "http://ctrl8.com/MenuBarFolder"
@@ -22,8 +22,9 @@ enum AppInfo {
     static let heritageURL = "https://old.osipov.ru/proge.htm"
 
     static let summary = """
-    MenuBarFolder pins one or more folders to the macOS menu bar and lets you \
-    browse each from its own dropdown — open files in their default app, dive \
-    into subfolders as nested submenus, all without opening a Finder window.
+    PinFold pins your hand-picked folders to the macOS menu bar and lets you \
+    act on them in one click — open in Finder, copy the path, launch Claude \
+    Code or IDEA right into the folder. Folder groups turn the menu bar into \
+    a launcher for your projects. Fork of MenuBarFolder (iLya Os, MIT).
     """
 }

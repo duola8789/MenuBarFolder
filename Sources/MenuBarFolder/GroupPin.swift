@@ -34,7 +34,7 @@ final class GroupPin: BasePin, NSMenuDelegate {
         if let button = statusItem.button {
             button.imagePosition = .imageOnly
             button.image = StatusIcon.make(letters: StatusIcon.iconLetters(for: displayName))
-            button.toolTip = "MenuBarFolder — \(displayName)"
+            button.toolTip = "PinFold — \(displayName)"
         }
 
         let menu = NSMenu()
@@ -49,7 +49,7 @@ final class GroupPin: BasePin, NSMenuDelegate {
     private func refreshChrome() {
         guard let button = statusItem.button else { return }
         button.image = StatusIcon.make(letters: StatusIcon.iconLetters(for: displayName))
-        button.toolTip = "MenuBarFolder — \(displayName)"
+        button.toolTip = "PinFold — \(displayName)"
     }
 
     override func teardown() {
