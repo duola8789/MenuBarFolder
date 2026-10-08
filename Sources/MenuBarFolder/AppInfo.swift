@@ -9,7 +9,7 @@ import Foundation
 
 enum AppInfo {
     static let name = "PinFold"
-    static let version = "1.3.0"  // blank-name default folder group
+    static let version = "1.3.1"  // blank-name default folder group, AGENTS.md conventions
     static let tagline = "Pin your folders to the menu bar."
 
     static let author = "iLya Os"
