@@ -87,9 +87,16 @@ if [[ -z "$SIGN_ID" ]]; then
   SIGN_ID="$(security find-identity -v -p codesigning \
     | awk '/Developer ID Application/ && !/Cubios/ {print $2; exit}')"
 fi
-[[ -n "$SIGN_ID" ]] || { echo "!! no personal Developer ID Application identity found" >&2; exit 1; }
+TS_ARGS=(--timestamp)
+if [[ -z "$SIGN_ID" ]]; then
+  echo "==> No Developer ID identity on this machine — AD-HOC signing."
+  echo "    The DMG is unsigned: recipients must clear quarantine"
+  echo "    (right-click > Open, or: xattr -dr com.apple.quarantine MenuBarFolder.app)."
+  SIGN_ID="-"
+  TS_ARGS=()   # --timestamp requires a real identity
+fi
 echo "==> Codesigning with $SIGN_ID"
-codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$APP_DIR"
+codesign --force --options runtime ${TS_ARGS[@]+"${TS_ARGS[@]}"} --sign "$SIGN_ID" "$APP_DIR"
 codesign --verify --strict --verbose=2 "$APP_DIR"
 
 echo "==> Building DMG (drag-to-Applications layout)"
@@ -99,7 +106,7 @@ cp -R "$APP_DIR" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
 rm -f "$DMG"
 hdiutil create -volname "$APP_NAME $VERSION" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
-codesign --force --timestamp --sign "$SIGN_ID" "$DMG"
+codesign --force ${TS_ARGS[@]+"${TS_ARGS[@]}"} --sign "$SIGN_ID" "$DMG"
 rm -rf "$STAGE"
 
 if [[ "${SKIP_NOTARIZE:-0}" == "1" ]]; then

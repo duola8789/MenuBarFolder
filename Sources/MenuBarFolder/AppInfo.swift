@@ -9,7 +9,7 @@ import Foundation
 
 enum AppInfo {
     static let name = "MenuBarFolder"
-    static let version = "1.1.0"  // browser bookmarks, per-instance settings, Option actions
+    static let version = "1.2.0"  // folder groups (launcher), Settings management, Start-at-Login fix
     static let tagline = "Your favourite folders, one click away in the menu bar."
 
     static let author = "iLya Os"
