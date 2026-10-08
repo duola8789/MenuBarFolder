@@ -20,7 +20,7 @@
 
 ## 3. 端到端验证
 
-- [ ] 3.1 用一个真实版本走通全链路：bump 版本 → push → 打 annotated
+- [x] 3.1 用一个真实版本走通全链路：bump 版本 → push → 打 annotated
   tag（notes 即 release 正文）→ push tag → 观察 Actions 成功、GitHub
   Release 创建、asset 为 `PinFold-<version>.dmg`、notes 为 tag message；
   顺带验证版本不一致路径（推一个错位 tag，确认 job fail 且不产生
