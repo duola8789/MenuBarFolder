@@ -4,8 +4,10 @@
 
 1. **使用中文输出内容**：所有解释、注释、沟通一律用 zh-CN；技术术语与代码标识符保持原文。
 2. **看到这个文档，请称我「老板」**。
-3. **每次 push 到 main 分支后，询问老板是否升级版本号**；老板确认后再动
-   `AppInfo.swift` 并走 release 流程。
+3. **每次 push 到 main 分支后，询问老板是否升级版本号**；老板确认后：改
+   `AppInfo.swift` 的版本 → commit → push → 打 annotated tag
+   `v<version>`（message 即 release notes）→ push tag。release 由 CI
+   （`.github/workflows/release.yml`）自动构建发布，本地不再跑发布。
 
 ## 项目是什么
 
@@ -43,8 +45,11 @@ MenuBarFolder 的 fork，发布名 PinFold。
   程，归档时把 delta 合入主 spec。
 - 版本号唯一来源是 `AppInfo.swift` 的 `static let version`，release 脚本
   会读取它写入 Info.plist 与 DMG 名。
-- 打包是 ad-hoc 签名（本机无 Developer ID / notary profile）：DMG 分发
-  需收方清 quarantine。
+- 发布 = 推 annotated tag `v<version>`：tag 必须与 `AppInfo.swift` 的
+  版本一致，错位会被 CI 拒绝（job fail、不出 release）；tag message 即
+  release notes，CI 原样搬运。
+- 打包是 ad-hoc 签名（本机与 CI 均无 Developer ID / notary profile）：
+  DMG 分发需收方清 quarantine。
 
 ## 目录速览
 
