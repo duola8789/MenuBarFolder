@@ -51,9 +51,13 @@ enum LoginItem {
             let data = try PropertyListSerialization.data(
                 fromPropertyList: plist, format: .xml, options: 0)
             try data.write(to: plistURL)
-            // Best-effort load into the current GUI session. Deprecated but
-            // still functional and the simplest broadly-compatible call.
-            launchctl(["load", "-w", plistURL.path])
+            // Deliberately NO `launchctl load` here: RunAtLoad would make the
+            // load itself spawn a SECOND copy of this binary right now, and
+            // every status item would appear twice in the menu bar. The plist
+            // is picked up by launchd automatically at the next login — the
+            // only situation this agent actually needs to start the app. The
+            // flock singleton lock in main.swift is the backstop for any
+            // accidental double start.
             return true
         } catch {
             NSLog("MenuBarFolder: failed to install login item: \(error)")
