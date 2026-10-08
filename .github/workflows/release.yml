@@ -1,0 +1,50 @@
+# Tag-driven release: push an annotated tag `v<version>` and CI builds and
+# publishes the GitHub Release. Version source of truth is AppInfo.swift;
+# a tag that disagrees with it fails this workflow before any build.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches AppInfo.swift version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          APP_VERSION="$(/usr/bin/grep -E 'static let version' \
+            Sources/MenuBarFolder/AppInfo.swift \
+            | /usr/bin/sed -E 's/.*"([^"]+)".*/\1/')"
+          echo "tag: v$TAG_VERSION  AppInfo.swift: $APP_VERSION"
+          if [[ "$TAG_VERSION" != "$APP_VERSION" ]]; then
+            echo "!! tag v$TAG_VERSION does not match AppInfo.swift version $APP_VERSION" >&2
+            echo "!! AppInfo.swift is the single source of truth — fix the tag or the version." >&2
+            exit 1
+          fi
+
+      - name: Build DMG
+        env:
+          SKIP_NOTARIZE: "1"
+        run: scripts/build_app.sh
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(/usr/bin/grep -E 'static let version' \
+            Sources/MenuBarFolder/AppInfo.swift \
+            | /usr/bin/sed -E 's/.*"([^"]+)".*/\1/')"
+          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > dist/release-notes.txt
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file dist/release-notes.txt \
+            "dist/PinFold-$VERSION.dmg"
