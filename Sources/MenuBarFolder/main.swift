@@ -259,6 +259,15 @@ MainActor.assumeIsolated {
         exit(1)
     }
 
+    // Single-instance lock: any second copy (the login agent firing while an
+    // instance already runs, a double `open`, …) exits before it can create
+    // status items, instead of stacking duplicate menu-bar icons.
+    let lockFD = open("/tmp/menubarfolder.singleton.lock", O_CREAT | O_RDWR, 0o644)
+    if lockFD < 0 || flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
+        exit(0)
+    }
+    // Intentionally never closed or unlocked — the lock dies with the process.
+
     let app = NSApplication.shared
     let delegate = AppDelegate()
     app.delegate = delegate
