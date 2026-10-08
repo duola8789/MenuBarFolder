@@ -72,18 +72,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Create a new (empty) folder group: name-entry window first, then a
-    /// fresh menu-bar icon awaiting its first member. Blank name = no create.
+    /// fresh menu-bar icon awaiting its first member. A BLANK name creates
+    /// the default group (name "default", folder icon) when none exists
+    /// yet; a second blank attempt is refused with an alert and the window
+    /// stays open so the user can type a name or cancel.
     func createNewGroup() {
         let window = newGroupWindow ?? FolderAliasWindow(windowTitle: "New Folder Group",
                                                          confirmTitle: "Create")
         newGroupWindow = window
-        window.show(prefill: "") { [weak self] raw in
-            guard let self else { return }
+        window.show(prefill: "") { [weak self, weak window] raw in
+            guard let self else { return true }
             let trimmed = raw.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty else { return }
-            let record = self.groupStore.addGroup(name: trimmed)
-            self.addGroupPin(record.id)
+            if trimmed.isEmpty {
+                if self.groupStore.hasDefaultGroup {
+                    self.refuseSecondDefaultGroup(window: window)
+                    return false   // keep the name window open for a retry
+                }
+                let record = self.groupStore.addGroup(name: "default", isDefault: true)
+                self.addGroupPin(record.id)
+            } else {
+                let record = self.groupStore.addGroup(name: trimmed)
+                self.addGroupPin(record.id)
+            }
+            return true
         }
+    }
+
+    /// Blank-create refused because a default group already exists. A sheet
+    /// over the still-open naming window: OK dismisses it, the user then
+    /// either types a name or cancels.
+    private func refuseSecondDefaultGroup(window: NSPanel?) {
+        guard let window else { return }
+        let alert = NSAlert()
+        alert.messageText = "A default group already exists"
+        alert.informativeText = "Give this group a name, or cancel."
+        alert.addButton(withTitle: "OK")
+        alert.beginSheetModal(for: window) { _ in }
     }
 
     /// Show profile letters on a bookmark icon only when more than one profile

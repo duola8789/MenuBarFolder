@@ -19,10 +19,13 @@ final class FolderAliasWindow: NSPanel {
     /// The text currently in the field.
     var text: String { textField.stringValue }
 
-    /// Called with the raw field content when the user confirms; the window
-    /// closes itself afterwards. Trimming/clearing semantics live with the
-    /// caller. Cancel leaves the value untouched.
-    private var onConfirm: ((String) -> Void)?
+    /// Called with the raw field content when the user confirms. Returning
+    /// true closes the window (the normal outcome); returning false rejects
+    /// this confirm and keeps the window open — only the create-a-default-
+    /// group path refuses (a default group already exists). Trimming/
+    /// clearing semantics live with the caller. Cancel leaves the value
+    /// untouched.
+    private var onConfirm: ((String) -> Bool)?
 
     /// Configurable wording so the same panel serves rename flows and the
     /// group-creation flow ("New Folder Group" / "Create"); both default to
@@ -60,8 +63,9 @@ final class FolderAliasWindow: NSPanel {
     }
 
     /// Show pre-filled with the current alias. Confirming (Rename button or
-    /// Enter) fires `onConfirm` with the raw field content; the window closes.
-    func show(prefill: String, onConfirm: @escaping (String) -> Void) {
+    /// Enter) fires `onConfirm` with the raw field content; the window
+    /// closes unless the callback returns false (confirm rejected).
+    func show(prefill: String, onConfirm: @escaping (String) -> Bool) {
         self.onConfirm = onConfirm
         textField.stringValue = prefill
 
@@ -77,8 +81,9 @@ final class FolderAliasWindow: NSPanel {
     @objc private func cancelEdit() { orderOut(nil) }
 
     @objc private func confirmEdit() {
-        onConfirm?(text)
-        orderOut(nil)
+        if onConfirm?(text) != false {
+            orderOut(nil)
+        }
     }
 
     /// Escape in the text field bubbles up here.

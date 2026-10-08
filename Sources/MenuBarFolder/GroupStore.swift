@@ -18,12 +18,35 @@ import Foundation
 final class GroupStore {
 
     /// One group: a stable id (the menu-bar pin and its rename target), the
-    /// group's display name, and the member bookmarks in add order.
+    /// group's display name, the member bookmarks in add order, and whether
+    /// this is the one blank-created default group (folder icon, name
+    /// "default" — see main.swift's createNewGroup).
     /// Identifiable so SwiftUI Settings lists can ForEach over groups.
     struct GroupRecord: Codable, Identifiable {
         let id: UUID
         var name: String
         var members: [Data]
+        var isDefault: Bool = false
+
+        private enum CodingKeys: String, CodingKey { case id, name, members, isDefault }
+
+        init(id: UUID = UUID(), name: String, members: [Data] = [], isDefault: Bool = false) {
+            self.id = id
+            self.name = name
+            self.members = members
+            self.isDefault = isDefault
+        }
+
+        /// Lenient decode: isDefault is absent in pre-change saves, so a
+        /// missing key must decode as false, not fail the whole load (a
+        /// thrown key-error would make EVERY group vanish on first run).
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decode(UUID.self, forKey: .id)
+            name = try c.decode(String.self, forKey: .name)
+            members = try c.decode([Data].self, forKey: .members)
+            isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
+        }
     }
 
     private let key = "folderGroups"     // [GroupRecord] as one JSON blob
@@ -39,9 +62,13 @@ final class GroupStore {
         groups.first { $0.id == id }
     }
 
+    /// Whether the (globally single) default-group slot is occupied — the
+    /// blank-name create path consults this before creating.
+    var hasDefaultGroup: Bool { groups.contains { $0.isDefault } }
+
     @discardableResult
-    func addGroup(name: String) -> GroupRecord {
-        let record = GroupRecord(id: UUID(), name: name, members: [])
+    func addGroup(name: String, isDefault: Bool = false) -> GroupRecord {
+        let record = GroupRecord(id: UUID(), name: name, members: [], isDefault: isDefault)
         groups.append(record)
         save()
         return record
@@ -50,6 +77,9 @@ final class GroupStore {
     func rename(_ name: String, for id: UUID) {
         guard let i = groups.firstIndex(where: { $0.id == id }) else { return }
         groups[i].name = name
+        // Naming (or renaming) the default group turns it into a regular
+        // one and frees the default slot for a later blank-create.
+        groups[i].isDefault = false
         save()
     }
 

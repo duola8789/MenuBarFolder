@@ -163,11 +163,12 @@ final class FolderPin: BasePin, NSMenuDelegate {
         let window = aliasWindow ?? FolderAliasWindow()
         aliasWindow = window
         window.show(prefill: options.alias ?? "") { [weak self] raw in
-            guard let self else { return }
+            guard let self else { return true }
             let trimmed = raw.trimmingCharacters(in: .whitespaces)
             self.options.alias = trimmed.isEmpty ? nil : trimmed
             self.persistOptions()
             self.refreshChrome()
+            return true
         }
     }
 

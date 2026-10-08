@@ -33,7 +33,7 @@ final class GroupPin: BasePin, NSMenuDelegate {
 
         if let button = statusItem.button {
             button.imagePosition = .imageOnly
-            button.image = StatusIcon.make(letters: StatusIcon.iconLetters(for: displayName))
+            button.image = iconImage
             button.toolTip = "PinFold — \(displayName)"
         }
 
@@ -45,10 +45,24 @@ final class GroupPin: BasePin, NSMenuDelegate {
     /// The group's name: shown in the menu bar icon and tooltip.
     private var displayName: String { store.group(id: groupID)?.name ?? "" }
 
+    /// The status icon: named groups overlay the name's leading letters on
+    /// the folder glyph; the default group reuses the APP icon (same source
+    /// and sizing as the empty-state setup item) — a recognizable "the app
+    /// itself" look, distinct from every letter-named group.
+    private var iconImage: NSImage {
+        let record = store.group(id: groupID)
+        if record?.isDefault == true {
+            let icon = AppIcon.make(size: 36)
+            icon.size = NSSize(width: 20, height: 18)
+            return icon
+        }
+        return StatusIcon.make(letters: StatusIcon.iconLetters(for: record?.name ?? ""))
+    }
+
     /// Re-apply name-derived chrome after a group rename.
     private func refreshChrome() {
         guard let button = statusItem.button else { return }
-        button.image = StatusIcon.make(letters: StatusIcon.iconLetters(for: displayName))
+        button.image = iconImage
         button.toolTip = "PinFold — \(displayName)"
     }
 
@@ -244,12 +258,13 @@ final class GroupPin: BasePin, NSMenuDelegate {
         let window = renameWindow ?? FolderAliasWindow()
         renameWindow = window
         window.show(prefill: store.group(id: groupID)?.name ?? "") { [weak self] raw in
-            guard let self else { return }
+            guard let self else { return true }
             let trimmed = raw.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty else { return }
+            guard !trimmed.isEmpty else { return true }
             self.store.rename(trimmed, for: self.groupID)
             self.refreshChrome()
             self.app?.notifyPinsChanged()   // live-refresh an open Settings window
+            return true
         }
     }
 
@@ -265,6 +280,7 @@ final class GroupPin: BasePin, NSMenuDelegate {
             opts.alias = trimmed.isEmpty ? nil : trimmed
             InstancePrefs.set(opts, for: path)
             self?.app?.notifyPinsChanged()   // Settings shows the alias too
+            return true
         }
     }
 
