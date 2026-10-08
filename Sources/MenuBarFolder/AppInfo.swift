@@ -9,7 +9,7 @@ import Foundation
 
 enum AppInfo {
     static let name = "PinFold"
-    static let version = "1.2.0"  // folder groups (launcher), Settings management, Start-at-Login fix
+    static let version = "1.3.0"  // blank-name default folder group
     static let tagline = "Pin your folders to the menu bar."
 
     static let author = "iLya Os"
