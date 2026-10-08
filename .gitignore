@@ -8,3 +8,6 @@ DerivedData/
 
 # build output
 dist/
+
+# JetBrains IDE local state
+.idea/
