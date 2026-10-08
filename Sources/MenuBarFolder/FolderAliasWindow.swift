@@ -3,7 +3,8 @@
 //  MenuBarFolder
 //
 //  A tiny panel with a text field for editing a pinned folder's display
-//  alias. Pure AppKit; only the popup/focus handling follows the
+//  alias — or, with different window/confirm wording, naming a folder group.
+//  Pure AppKit; only the popup/focus handling follows the
 //  BrowserBookmarksWindow pattern (activate + makeKeyAndOrderFront).
 //
 
@@ -23,11 +24,15 @@ final class FolderAliasWindow: NSPanel {
     /// caller. Cancel leaves the value untouched.
     private var onConfirm: ((String) -> Void)?
 
-    init() {
+    /// Configurable wording so the same panel serves rename flows and the
+    /// group-creation flow ("New Folder Group" / "Create"); both default to
+    /// the original alias-rename labels, so existing call sites are untouched.
+    init(windowTitle: String = "Rename Folder", confirmTitle: String = "Rename") {
         super.init(contentRect: NSRect(x: 0, y: 0, width: 340, height: 112),
                    styleMask: [.titled, .closable],
                    backing: .buffered, defer: false)
-        title = "Rename Folder"
+        title = windowTitle
+        confirmButton.title = confirmTitle
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
 
