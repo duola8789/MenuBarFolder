@@ -12,7 +12,10 @@ import Foundation
 
 enum LoginItem {
 
-    static let label = "com.ctrl8.menubarfolder"
+    /// Fork identity — deliberately different from the upstream
+    /// com.ctrl8.menubarfolder so both apps can manage their own login
+    /// item without clobbering each other's plist.
+    static let label = "com.duola8789.menubarfolder"
 
     private static var plistURL: URL {
         FileManager.default.homeDirectoryForCurrentUser

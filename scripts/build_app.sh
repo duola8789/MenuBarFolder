@@ -21,7 +21,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 APP_NAME="MenuBarFolder"
-BUNDLE_ID="com.ctrl8.MenuBarFolder"
+BUNDLE_ID="com.duola8789.MenuBarFolder"   # fork identity: distinct from upstream com.ctrl8.*
 NOTARY_PROFILE="${NOTARY_PROFILE:-iodia-notary}"
 
 VERSION="$(/usr/bin/grep -E 'static let version' "$ROOT/Sources/MenuBarFolder/AppInfo.swift" \
