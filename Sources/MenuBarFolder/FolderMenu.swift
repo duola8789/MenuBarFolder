@@ -219,6 +219,7 @@ final class FolderMenuDelegate: NSObject, NSMenuDelegate {
             var opts = InstancePrefs.options(for: path)
             opts.alias = trimmed.isEmpty ? nil : trimmed
             InstancePrefs.set(opts, for: path)
+            return true
         }
     }
 
