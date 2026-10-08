@@ -20,12 +20,14 @@ final class SettingsModel: ObservableObject {
     @Published var startAtLogin: Bool
     @Published var folders: [URL]
     @Published var bookmarks: [BookmarkSource]
+    @Published var groups: [GroupStore.GroupRecord]
 
     init(app: AppDelegate) {
         self.app = app
         self.startAtLogin = LoginItem.isEnabled
         self.folders = app.pinnedFolders
         self.bookmarks = app.bookmarkSources
+        self.groups = app.folderGroups
         // Live-refresh the lists when pins are added/removed from a menu.
         NotificationCenter.default.addObserver(forName: .mbfPinsChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.reloadLists() }
@@ -41,6 +43,7 @@ final class SettingsModel: ObservableObject {
     func reloadLists() {
         folders = app?.pinnedFolders ?? []
         bookmarks = app?.bookmarkSources ?? []
+        groups = app?.folderGroups ?? []
     }
 
     /// Display label for a bookmark source: "Browser · Profile".
@@ -75,6 +78,25 @@ final class SettingsModel: ObservableObject {
 
     func removeBookmark(_ source: BookmarkSource) {
         app?.removeBookmarkSource(source)
+        reloadLists()
+    }
+
+    // Group members — drag to reorder (same persistence the group menu's
+    // Move Up/Move Down writes), button to remove.
+
+    func moveGroupMember(_ groupID: UUID, from: Int, to: Int) {
+        app?.moveGroupMember(groupID, from: from, to: to)
+        reloadLists()
+    }
+
+    func removeGroupMember(_ groupID: UUID, at index: Int) {
+        app?.removeGroupMember(groupID, at: index)
+        reloadLists()
+    }
+
+    func addGroupMember(_ groupID: UUID) {
+        guard let url = app?.chooseGroupMemberFolder() else { return }
+        app?.addGroupMember(url, to: groupID)
         reloadLists()
     }
 }
@@ -119,7 +141,9 @@ private struct GeneralSettingsTab: View {
                         .tag(url)
                     }
                 }
-                .frame(minHeight: 110)
+                // Show every pinned folder — the form scrolls, the list
+                // doesn't (was a fixed 110pt window with inner scrolling).
+                .frame(minHeight: CGFloat(max(model.folders.count, 2)) * 28 + 12)
 
                 HStack {
                     Button("Add Folder…") { model.addFolder() }
@@ -131,13 +155,24 @@ private struct GeneralSettingsTab: View {
                 }
             }
 
+            Section("Folder groups") {
+                if model.groups.isEmpty {
+                    Text("None yet — use “New Folder Group…” in any MenuBarFolder menu.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(model.groups) { group in
+                    groupRows(group)
+                }
+            }
+
             Section("Browser bookmarks") {
                 List(selection: $bmSelection) {
                     ForEach(model.bookmarks) { source in
                         Text(model.label(for: source)).tag(source)
                     }
                 }
-                .frame(minHeight: 90)
+                .frame(minHeight: CGFloat(max(model.bookmarks.count, 2)) * 28 + 12)
 
                 HStack {
                     Button("Add Bookmarks…") { model.addBookmarks() }
@@ -158,10 +193,81 @@ private struct GeneralSettingsTab: View {
         .formStyle(.grouped)
     }
 
-    private static func icon(for url: URL) -> NSImage {
+    static func icon(for url: URL) -> NSImage {
         let icon = NSWorkspace.shared.icon(forFile: url.path)
         icon.size = NSSize(width: 16, height: 16)
         return icon
+    }
+}
+
+// Folder-groups section content, FLATTENED on purpose: every element (group
+// name, each member row, the add button) is a DIRECT child row of the form
+// section. Six rounds of screenshots showed that one tall child inside a
+// formStyle(.grouped) section (a List, or a VStack bundling everything) gets
+// vertically centered/clipped when it outgrows the section's allotted height
+// — the group name and buttons kept vanishing. Individual rows are the one
+// layout a form is guaranteed to handle: they grow and scroll natively.
+extension GeneralSettingsTab {
+
+    /// The direct section children for one group (emits several rows).
+    @ViewBuilder
+    fileprivate func groupRows(_ group: GroupStore.GroupRecord) -> some View {
+        Text(group.name)
+            .font(.headline)
+            .fixedSize()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 10)
+        if group.members.isEmpty {
+            Text("No folders yet.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            // Same display rule as the group menu rows: alias first, real
+            // folder name in the path caption below. Drag row A onto row B
+            // and A takes B's slot (.draggable/.dropDestination, the system
+            // drag pair — List's .onMove needs a List, which is what broke).
+            let aliases = InstancePrefs.aliasSnapshot()
+            ForEach(Array(group.members.enumerated()), id: \.offset) { index, data in
+                memberRow(group: group, aliases: aliases, data: data, index: index)
+                    .draggable(String(index))   // Int isn't Transferable
+                    .dropDestination(for: String.self) { items, _ in
+                        guard let from = items.first.flatMap(Int.init),
+                              from != index else { return false }
+                        model.moveGroupMember(group.id, from: from, to: index)
+                        return true
+                    }
+            }
+        }
+        Button("Add Folder…") { model.addGroupMember(group.id) }
+            .padding(.top, 2)
+    }
+
+    fileprivate func memberRow(group: GroupStore.GroupRecord,
+                               aliases: [String: String], data: Data, index: Int) -> some View {
+        HStack(spacing: 8) {
+            if let url = GroupStore.resolve(data) {
+                Image(nsImage: Self.icon(for: url))
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(aliases[url.standardizedFileURL.path] ?? url.displayName)
+                    Text(url.path)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            } else {
+                Image(systemName: "questionmark.square.dashed")
+                Text("(missing)").foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button {
+                model.removeGroupMember(group.id, at: index)
+            } label: {
+                Image(systemName: "minus.circle")
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.vertical, 4)
     }
 }
 
