@@ -29,8 +29,11 @@ final class SettingsModel: ObservableObject {
         self.bookmarks = app.bookmarkSources
         self.groups = app.folderGroups
         // Live-refresh the lists when pins are added/removed from a menu.
+        // `guard let self` first: older toolchains (Xcode 15.4 on CI) reject
+        // referencing the weak `self` capture directly inside a @Sendable Task.
         NotificationCenter.default.addObserver(forName: .mbfPinsChanged, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.reloadLists() }
+            guard let self else { return }
+            Task { @MainActor in self.reloadLists() }
         }
     }
 
