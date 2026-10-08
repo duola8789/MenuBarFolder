@@ -227,7 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let icon = AppIcon.make(size: 36)
             icon.size = NSSize(width: 20, height: 18)
             button.image = icon
-            button.toolTip = "MenuBarFolder — nothing pinned yet"
+            button.toolTip = "PinFold — nothing pinned yet"
         }
         let menu = NSMenu()
         let header = NSMenuItem(title: "Nothing pinned yet", action: nil, keyEquivalent: "")
@@ -248,7 +248,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.target = self
         menu.addItem(settings)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit MenuBarFolder",
+        menu.addItem(NSMenuItem(title: "Quit PinFold",
                                 action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         item.menu = menu
         setupItem = item
@@ -292,7 +292,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 var isDir: ObjCBool = false
                 guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
                       isDir.boolValue else {
-                    NSLog("MenuBarFolder: argument is not a folder: \(arg)")
+                    NSLog("PinFold: argument is not a folder: \(arg)")
                     return nil
                 }
                 return url
@@ -322,7 +322,7 @@ MainActor.assumeIsolated {
     // Single-instance lock: any second copy (the login agent firing while an
     // instance already runs, a double `open`, …) exits before it can create
     // status items, instead of stacking duplicate menu-bar icons.
-    let lockFD = open("/tmp/menubarfolder.duola8789.singleton.lock", O_CREAT | O_RDWR, 0o644)
+    let lockFD = open("/tmp/pinfold.duola8789.singleton.lock", O_CREAT | O_RDWR, 0o644)
     if lockFD < 0 || flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
         exit(0)
     }

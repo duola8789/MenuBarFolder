@@ -20,8 +20,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-APP_NAME="MenuBarFolder"
-BUNDLE_ID="com.duola8789.MenuBarFolder"   # fork identity: distinct from upstream com.ctrl8.*
+APP_NAME="PinFold"          # fork of MenuBarFolder; binary is renamed on copy
+PRODUCT="MenuBarFolder"     # SwiftPM product name (repo keeps the upstream name)
+BUNDLE_ID="com.duola8789.PinFold"   # fork identity: distinct from upstream com.ctrl8.*
 NOTARY_PROFILE="${NOTARY_PROFILE:-iodia-notary}"
 
 VERSION="$(/usr/bin/grep -E 'static let version' "$ROOT/Sources/MenuBarFolder/AppInfo.swift" \
@@ -38,8 +39,8 @@ DMG="$DIST/$APP_NAME-$VERSION.dmg"
 echo "==> Building $APP_NAME $VERSION (universal release)"
 swift build -c release --arch arm64 --arch x86_64
 
-BIN="$ROOT/.build/apple/Products/Release/$APP_NAME"
-[[ -f "$BIN" ]] || BIN="$ROOT/.build/release/$APP_NAME"
+BIN="$ROOT/.build/apple/Products/Release/$PRODUCT"
+[[ -f "$BIN" ]] || BIN="$ROOT/.build/release/$PRODUCT"
 [[ -f "$BIN" ]] || { echo "!! binary not found" >&2; exit 1; }
 
 echo "==> Assembling $APP_DIR"

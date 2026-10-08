@@ -12,10 +12,11 @@ import Foundation
 
 enum LoginItem {
 
-    /// Fork identity — deliberately different from the upstream
-    /// com.ctrl8.menubarfolder so both apps can manage their own login
+    /// Fork identity — deliberately different from upstream's
+    /// com.ctrl8.menubarfolder (and from this fork's own pre-rename
+    /// label) so up- and downstream can each manage their own login
     /// item without clobbering each other's plist.
-    static let label = "com.duola8789.menubarfolder"
+    static let label = "com.duola8789.pinfold"
 
     private static var plistURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
@@ -38,7 +39,7 @@ enum LoginItem {
 
     private static func install() -> Bool {
         guard let exe = Bundle.main.executablePath else {
-            NSLog("MenuBarFolder: can't resolve executable path for login item")
+            NSLog("PinFold: can't resolve executable path for login item")
             return false
         }
         let plist: [String: Any] = [
@@ -63,7 +64,7 @@ enum LoginItem {
             // accidental double start.
             return true
         } catch {
-            NSLog("MenuBarFolder: failed to install login item: \(error)")
+            NSLog("PinFold: failed to install login item: \(error)")
             return false
         }
     }
@@ -75,7 +76,7 @@ enum LoginItem {
             try FileManager.default.removeItem(at: plistURL)
             return true
         } catch {
-            NSLog("MenuBarFolder: failed to remove login item: \(error)")
+            NSLog("PinFold: failed to remove login item: \(error)")
             return false
         }
     }
@@ -85,6 +86,6 @@ enum LoginItem {
         task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
         task.arguments = args
         do { try task.run(); task.waitUntilExit() }
-        catch { NSLog("MenuBarFolder: launchctl \(args) failed: \(error)") }
+        catch { NSLog("PinFold: launchctl \(args) failed: \(error)") }
     }
 }
