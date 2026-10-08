@@ -68,6 +68,11 @@ class BasePin: NSObject {
         addFolder.target = self
         menu.addItem(addFolder)
 
+        let addGroup = NSMenuItem(title: "New Folder Group…",
+                                  action: #selector(newFolderGroup), keyEquivalent: "")
+        addGroup.target = self
+        menu.addItem(addGroup)
+
         let addBookmarks = NSMenuItem(title: "Open Browser Bookmarks…",
                                       action: #selector(addBookmarks), keyEquivalent: "")
         addBookmarks.target = self
@@ -89,5 +94,6 @@ class BasePin: NSObject {
 
     @objc func openAnotherFolder() { app?.addFolderViaPicker() }
     @objc func addBookmarks() { app?.addBookmarksViaChooser() }
+    @objc func newFolderGroup() { app?.createNewGroup() }
     @objc func closeThis() { app?.closePin(self) }
 }

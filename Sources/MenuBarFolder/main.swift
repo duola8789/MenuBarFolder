@@ -22,7 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let store = FolderStore()
     private let bookmarkStore = BookmarkStore()
+    private let groupStore = GroupStore()
     private var pins: [BasePin] = []
+
+    /// Name-entry window for "New Folder Group…" (lazily created, reused).
+    private var newGroupWindow: FolderAliasWindow?
 
     /// Shown only when nothing is pinned: an empty menu offering the setup
     /// actions, so the app is never an invisible, unreachable process.
@@ -40,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         for url in store.folders { addFolderPin(url) }
         for src in bookmarkStore.sources { addBookmarkPin(src) }
+        for record in groupStore.groups { addGroupPin(record.id) }
 
         if pins.isEmpty { showSetupItem() }
     }
@@ -58,6 +63,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pins.append(pin)
         updateBookmarkIcons()
         notifyPinsChanged()
+    }
+
+    private func addGroupPin(_ groupID: UUID) {
+        removeSetupItem()
+        pins.append(GroupPin(groupID: groupID, store: groupStore, app: self))
+        notifyPinsChanged()
+    }
+
+    /// Create a new (empty) folder group: name-entry window first, then a
+    /// fresh menu-bar icon awaiting its first member. Blank name = no create.
+    func createNewGroup() {
+        let window = newGroupWindow ?? FolderAliasWindow(windowTitle: "New Folder Group",
+                                                         confirmTitle: "Create")
+        newGroupWindow = window
+        window.show(prefill: "") { [weak self] raw in
+            guard let self else { return }
+            let trimmed = raw.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { return }
+            let record = self.groupStore.addGroup(name: trimmed)
+            self.addGroupPin(record.id)
+        }
     }
 
     /// Show profile letters on a bookmark icon only when more than one profile
@@ -106,7 +132,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notifyPinsChanged()
     }
 
-    private func notifyPinsChanged() {
+    /// Posted by pin add/remove AND by group-member changes (add / remove /
+    /// move from a group menu), so an open Settings window stays in sync.
+    func notifyPinsChanged() {
         NotificationCenter.default.post(name: .mbfPinsChanged, object: nil)
     }
 
@@ -131,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func setupAddFolder() { addFolderViaPicker() }
     @objc private func setupAddBookmarks() { addBookmarksViaChooser() }
+    @objc private func setupAddGroup() { createNewGroup() }
 
     // MARK: settings-window support
 
@@ -139,6 +168,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// The pinned bookmark sources.
     var bookmarkSources: [BookmarkSource] { bookmarkStore.sources }
+
+    // Group-member management, called from the Settings window (same pattern
+    // as removeFolderURL above: Settings never touches a store directly).
+
+    /// The folder groups, in display order (source of truth = GroupStore).
+    var folderGroups: [GroupStore.GroupRecord] { groupStore.groups }
+
+    func moveGroupMember(_ groupID: UUID, from: Int, to: Int) {
+        groupStore.moveMember(from: from, to: to, of: groupID)
+    }
+
+    func removeGroupMember(_ groupID: UUID, at index: Int) {
+        groupStore.removeMember(at: index, of: groupID)
+        notifyPinsChanged()
+    }
+
+    func addGroupMember(_ url: URL, to groupID: UUID) {
+        groupStore.addMember(url, to: groupID)
+        notifyPinsChanged()
+    }
 
     /// Remove a pinned folder by URL (settings window). Never force-quits;
     /// if it leaves nothing pinned, the setup menu reappears.
@@ -163,6 +212,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func closePin(_ pin: BasePin) {
         if let f = pin as? FolderPin { store.remove(f.url) }
         else if let b = pin as? BookmarksPin { bookmarkStore.remove(b.source) }
+        else if let g = pin as? GroupPin { groupStore.remove(id: g.groupID) }
         tearDown(pin)
         if pins.isEmpty { showSetupItem() }
     }
@@ -187,6 +237,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let addFolder = NSMenuItem(title: "Pin a Folder…", action: #selector(setupAddFolder), keyEquivalent: "")
         addFolder.target = self
         menu.addItem(addFolder)
+        let addGroup = NSMenuItem(title: "New Folder Group…", action: #selector(setupAddGroup), keyEquivalent: "")
+        addGroup.target = self
+        menu.addItem(addGroup)
         let addBookmarks = NSMenuItem(title: "Open Browser Bookmarks…", action: #selector(setupAddBookmarks), keyEquivalent: "")
         addBookmarks.target = self
         menu.addItem(addBookmarks)
@@ -210,15 +263,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: helpers
 
-    private func runFolderPicker() -> URL? {
+    private func runFolderPicker(message: String = "Choose a folder to pin to the menu bar.",
+                                 prompt: String = "Pin Folder") -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.prompt = "Pin Folder"
-        panel.message = "Choose a folder to pin to the menu bar."
+        panel.prompt = prompt
+        panel.message = message
         NSApp.activate(ignoringOtherApps: true)   // bring the panel to the front
         return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    /// Member picker for group pins — same panel, group-specific wording.
+    func chooseGroupMemberFolder() -> URL? {
+        runFolderPicker(message: "Choose a folder to add to this group.",
+                        prompt: "Add")
     }
 
     /// Non-flag command-line arguments that are readable directories
