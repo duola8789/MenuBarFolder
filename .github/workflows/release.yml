@@ -16,11 +16,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        # fetch-depth: 0 — a shallow clone does not carry the annotated tag's
-        # message, and the release notes are taken from that message.
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Verify tag matches AppInfo.swift version
         run: |
@@ -47,7 +43,15 @@ jobs:
           VERSION="$(/usr/bin/grep -E 'static let version' \
             Sources/MenuBarFolder/AppInfo.swift \
             | /usr/bin/sed -E 's/.*"([^"]+)".*/\1/')"
-          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > dist/release-notes.txt
+          # Read the tag's message from the GitHub API: checkout@v4 never
+          # materializes refs/tags/* in the clone, so `git tag -l` is empty.
+          TAG_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME" --jq '.object.sha')"
+          TAG_TYPE="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME" --jq '.object.type')"
+          if [[ "$TAG_TYPE" == "tag" ]]; then
+            gh api "repos/$GITHUB_REPOSITORY/git/tags/$TAG_SHA" --jq '.message' > dist/release-notes.txt
+          else
+            : > dist/release-notes.txt   # lightweight tag — empty notes
+          fi
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --notes-file dist/release-notes.txt \
