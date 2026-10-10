@@ -9,7 +9,7 @@ import Foundation
 
 enum AppInfo {
     static let name = "PinFold"
-    static let version = "1.3.2"  // tag-driven release: CI builds and publishes on annotated tag push
+    static let version = "1.4.0"  // tag-driven release: CI builds and publishes on annotated tag push
     static let tagline = "Pin your folders to the menu bar."
 
     static let author = "iLya Os"
