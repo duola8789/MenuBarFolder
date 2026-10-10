@@ -8,6 +8,7 @@
    `AppInfo.swift` 的版本 → commit → push → 打 annotated tag
    `v<version>`（message 即 release notes）→ push tag。release 由 CI
    （`.github/workflows/release.yml`）自动构建发布，本地不再跑发布。
+4. release 文案使用中文   
 
 ## 项目是什么
 
