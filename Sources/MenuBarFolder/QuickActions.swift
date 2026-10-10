@@ -190,16 +190,56 @@ enum QuickActions {
     /// Ultimate and Community report bundle id `com.jetbrains.intellij`, so
     /// whichever edition LaunchServices resolves wins; `.ce` is kept as a
     /// fallback for older installs. Beeps when no IDEA is found.
+    ///
+    /// Launches the IDE binary with the folder as its command-line argument
+    /// (what the Toolbox `idea` script does) instead of going through the
+    /// Apple-event "open documents" channel: that channel hard-codes
+    /// forceOpenInNewFrame inside IDEA, which also restores the project's
+    /// remembered fullscreen state — a fullscreen window owns its own macOS
+    /// Space and can never join the existing window's tab bar. The binary path
+    /// forwards the argument to the running instance, which opens the project
+    /// as a regular windowed tab. With no running instance the spawned process
+    /// simply becomes the IDE and opens the project on startup.
+    ///
+    /// AppKit only auto-tabs a new window into the existing tab group while
+    /// the target app is frontmost; the forwarded open creates the window
+    /// before IDEA brings itself to front. So the running instance is
+    /// activated first — without it the new project window always comes out
+    /// as a separate window when IDEA is in the background.
     static func openInIDEA(_ url: URL) {
         let bundleIDs = ["com.jetbrains.intellij", "com.jetbrains.intellij.ce"]
-        guard let appURL = bundleIDs.compactMap({
-            NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0)
+        guard let (bundleID, appURL) = bundleIDs.compactMap({ id -> (String, URL)? in
+            guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id)
+            else { return nil }
+            return (id, url)
         }).first else {
             NSSound.beep()
             return
         }
-        NSWorkspace.shared.open([url], withApplicationAt: appURL,
-                                configuration: NSWorkspace.OpenConfiguration())
+        if let app = NSRunningApplication
+            .runningApplications(withBundleIdentifier: bundleID)
+            .first(where: { !$0.isTerminated }) {
+            if #available(macOS 14.0, *) {
+                Task { _ = try? await app.activate() }
+            } else {
+                app.activate(options: [])
+            }
+        }
+        let executable = NSDictionary(
+            contentsOf: appURL.appendingPathComponent("Contents/Info.plist")
+        )?["CFBundleExecutable"] as? String ?? "idea"
+        let process = Process()
+        process.executableURL = appURL.appendingPathComponent("Contents/MacOS/\(executable)")
+        process.arguments = [url.path]
+        do {
+            try process.run()
+        }
+        catch {
+            // Binary missing or not executable; fall back to the plain
+            // LaunchServices open so the folder is still opened.
+            NSWorkspace.shared.open([url], withApplicationAt: appURL,
+                                    configuration: NSWorkspace.OpenConfiguration())
+        }
     }
 
     /// Single-quote a string for interpolation into a shell command.
