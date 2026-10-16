@@ -30,7 +30,8 @@ MenuBarFolder 的 fork，发布名 PinFold。
 
 - **构建依赖完整 Xcode**：CLT 缺 SwiftUIMacros 插件，动代码前确认
   `xcode-select -p` 指向 Xcode.app。
-- **单实例锁**：`/tmp/pinfold.duola8789.singleton.lock`（flock）。debug
+- **单实例锁**：`~/Library/Application Support/PinFold/singleton.lock`
+  （flock；2026-10 之前在世界可写的 `/tmp`，已迁到用户私有目录）。debug
   产物与安装版不能共存——调试前先退出安装版，测完记得恢复。
 - **debug 产物与安装版数据隔离**：裸二进制走 `MenuBarFolder` defaults
   域，安装版走自己的 bundle id 域，互不影响。
@@ -59,4 +60,8 @@ Sources/MenuBarFolder/   全部源码（AppKit，无 storyboard，纯代码 UI�
 scripts/build_app.sh     构建签名打包
 openspec/                规格、进行中/归档的变更
 BACKLOG.md               待办池
+
+运行期文件（不在仓库内，随应用安装位置而定）：
+~/Library/Application Support/PinFold/singleton.lock   单实例锁
+~/Library/LaunchAgents/com.duola8789.pinfold.plist     登录项（开启时存在）
 ```
