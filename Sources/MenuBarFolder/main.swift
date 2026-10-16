@@ -35,6 +35,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Keep an installed login item pointing at where the app lives now: its
+        // plist records an absolute path, and the normal install (dragging the
+        // app out of the DMG into /Applications) would otherwise strand it on a
+        // path that no longer exists. No-op unless the login item is on.
+        LoginItem.healIfNeeded()
+
         // Folder paths on the command line are added to the persistent set
         // (deduped), so `MenuBarFolder ~/A ~/B` seeds icons on first launch and
         // a later bare launch restores them.
@@ -326,6 +332,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 // MARK: - main
 
+/// Hold the process-wide single-instance lock for the rest of this process's
+/// life, so a second copy (the login agent firing while an instance already
+/// runs, a double `open`, …) exits before it can create status items and
+/// stack duplicate menu-bar icons.
+///
+/// The lock lives in the app's own directory under Application Support, NOT
+/// in /tmp: that directory is world-writable, so with a fixed, predictable
+/// path any local account could pre-create the file and hold the flock,
+/// leaving every launch to exit silently.
+///
+/// The two ways this can fail are kept apart on purpose:
+/// - a live instance holds the lock → exit silently. That is the one
+///   legitimate silent exit.
+/// - the lock can't be created at all (directory missing or unwritable) →
+///   log why and keep going unlocked. Folding this case into the same silent
+///   exit is what leaves the app invisible with no trace to debug — the very
+///   failure class moving the lock was meant to remove.
+private func acquireInstanceLock() {
+    let fm = FileManager.default
+    guard let support = fm.urls(for: .applicationSupportDirectory,
+                                in: .userDomainMask).first else {
+        NSLog("PinFold: no Application Support directory — starting without the instance lock")
+        return
+    }
+
+    let dir = support.appendingPathComponent("PinFold", isDirectory: true)
+    do {
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+    } catch {
+        NSLog("PinFold: can't create \(dir.path) (\(error)) — starting without the instance lock")
+        return
+    }
+
+    let lockPath = dir.appendingPathComponent("singleton.lock").path
+    let fd = open(lockPath, O_CREAT | O_RDWR, 0o600)
+    guard fd >= 0 else {
+        NSLog("PinFold: can't open \(lockPath) (errno \(errno)) — starting without the instance lock")
+        return
+    }
+    if flock(fd, LOCK_EX | LOCK_NB) != 0 {
+        if errno == EWOULDBLOCK {
+            exit(0)   // a live instance holds it — this copy is the duplicate
+        }
+        NSLog("PinFold: flock failed (errno \(errno)) — starting without the instance lock")
+        close(fd)
+        return
+    }
+    // Intentionally never closed or unlocked — the lock dies with the process.
+}
+
 MainActor.assumeIsolated {
     // Build-time helper: `MenuBarFolder --export-icon <path.png>` renders the
     // app icon to a PNG and exits, so the packaging script can derive the
@@ -343,14 +399,7 @@ MainActor.assumeIsolated {
         exit(1)
     }
 
-    // Single-instance lock: any second copy (the login agent firing while an
-    // instance already runs, a double `open`, …) exits before it can create
-    // status items, instead of stacking duplicate menu-bar icons.
-    let lockFD = open("/tmp/pinfold.duola8789.singleton.lock", O_CREAT | O_RDWR, 0o644)
-    if lockFD < 0 || flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
-        exit(0)
-    }
-    // Intentionally never closed or unlocked — the lock dies with the process.
+    acquireInstanceLock()
 
     let app = NSApplication.shared
     let delegate = AppDelegate()

@@ -95,7 +95,10 @@ scripts/build_app.sh                    # 打包发布版 DMG
 
 - 文件夹/分组以 bookmark 保存，移动改名后依然有效。
 - 登录启动写 `~/Library/LaunchAgents/com.duola8789.pinfold.plist`，
-  无需 `.app` bundle；带单例锁，修掉了上游登录启动会叠出双图标的 bug。
+  无需 `.app` bundle；启动时会把其中记录的路径修正到应用当前所在位置，
+  所以从 DMG 把 app 拖进 `/Applications` 后登录项不会失效。带单例锁
+  （`~/Library/Application Support/PinFold/singleton.lock`），修掉了上游
+  登录启动会叠出双图标的 bug。
 - 目录读取在后台线程、带缓存、每层有上限，菜单秒开。
 - Claude Code 按钮经 AppleScript 驱动 iTerm2，按 bundle id 寻址并做
   启动窗口空闲检测 —— 冷启动也稳定，不会多开空窗口。
