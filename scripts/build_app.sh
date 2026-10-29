@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Build, sign, notarize, and package MenuBarFolder as a distributable DMG.
 #
-# This is a PERSONAL project: it signs with Ilya's personal Developer ID and
-# explicitly refuses the Cubios Inc business certificate.
+# This is a PERSONAL project: it prefers Ilya's personal Developer ID and
+# explicitly refuses the Cubios Inc business certificate. When no Developer ID
+# is available it falls back to a free Apple Development cert (stable identity,
+# so TCC grants survive rebuilds) and finally to ad-hoc signing.
 #
 # One-time setup (already done on this machine via the ioDiacritics project):
 #   - Personal "Developer ID Application: Ilya Osipov (TEAMID)" cert in keychain.
@@ -82,21 +84,60 @@ cat > "$CONTENTS/Info.plist" <<PLIST
 PLIST
 echo "APPL????" > "$CONTENTS/PkgInfo"
 
-# Resolve a PERSONAL Developer ID identity (never the Cubios business cert).
+# Resolve a signing identity, most trusted first:
+#   1. a personal Developer ID Application cert (never the Cubios business cert)
+#   2. a free "Apple Development" cert from the Xcode Personal Team
+#   3. ad-hoc
+# Steps 1 and 2 both give a stable identity, so TCC grants and login items keep
+# working across rebuilds. Only step 1 can be notarized, and only step 1 lets a
+# downloaded copy launch without the user clearing quarantine.
 SIGN_ID="${SIGN_ID:-}"
+SIGN_KIND=""
+[[ "$SIGN_ID" == "-" ]] && SIGN_KIND="ad-hoc"
+
+# An explicit SIGN_ID may be a name or a hash: classify it too, otherwise the
+# timestamp and notarization branches below treat it as a non-Developer-ID cert.
+if [[ -n "$SIGN_ID" && "$SIGN_ID" != "-" ]]; then
+  SIGN_KIND="$(security find-identity -v -p codesigning \
+    | grep -F -- "$SIGN_ID" \
+    | sed -nE 's/.*"(Developer ID Application|Apple Development|Apple Distribution):.*/\1/p' \
+    | head -1 || true)"
+fi
+
 if [[ -z "$SIGN_ID" ]]; then
   SIGN_ID="$(security find-identity -v -p codesigning \
     | awk '/Developer ID Application/ && !/Cubios/ {print $2; exit}')"
+  [[ -n "$SIGN_ID" ]] && SIGN_KIND="Developer ID Application"
 fi
+
+if [[ -z "$SIGN_ID" ]]; then
+  SIGN_ID="$(security find-identity -v -p codesigning \
+    | awk '/Apple Development/ && !/Cubios/ {print $2; exit}')"
+  [[ -n "$SIGN_ID" ]] && SIGN_KIND="Apple Development"
+fi
+
 TS_ARGS=(--timestamp)
 if [[ -z "$SIGN_ID" ]]; then
-  echo "==> No Developer ID identity on this machine — AD-HOC signing."
+  echo "==> No signing identity on this machine — AD-HOC signing."
   echo "    The DMG is unsigned: recipients must clear quarantine"
   echo "    (right-click > Open, or: xattr -dr com.apple.quarantine MenuBarFolder.app)."
   SIGN_ID="-"
+  SIGN_KIND="ad-hoc"
   TS_ARGS=()   # --timestamp requires a real identity
+elif [[ "$SIGN_KIND" != "Developer ID Application" ]]; then
+  TS_ARGS=()   # timestamping is only meaningful for Developer ID
 fi
-echo "==> Codesigning with $SIGN_ID"
+
+if [[ "$SIGN_KIND" == "Apple Development" || "$SIGN_KIND" == "Apple Distribution" ]]; then
+  echo "==> No Developer ID cert found — using the $SIGN_KIND certificate."
+  echo "    The DMG will not be notarized and downloaded copies still need quarantine"
+  echo "    to be cleared, but TCC permissions and login items stay stable."
+fi
+if [[ -n "$SIGN_KIND" ]]; then
+  echo "==> Codesigning with $SIGN_KIND: $SIGN_ID"
+else
+  echo "==> Codesigning with SIGN_ID: $SIGN_ID"
+fi
 codesign --force --options runtime ${TS_ARGS[@]+"${TS_ARGS[@]}"} --sign "$SIGN_ID" "$APP_DIR"
 codesign --verify --strict --verbose=2 "$APP_DIR"
 
@@ -110,7 +151,9 @@ hdiutil create -volname "$APP_NAME $VERSION" -srcfolder "$STAGE" -ov -format UDZ
 codesign --force ${TS_ARGS[@]+"${TS_ARGS[@]}"} --sign "$SIGN_ID" "$DMG"
 rm -rf "$STAGE"
 
-if [[ "${SKIP_NOTARIZE:-0}" == "1" ]]; then
+if [[ "$SIGN_KIND" != "Developer ID Application" ]]; then
+  echo "==> Signed with ${SIGN_KIND:-an unidentified certificate} — notarization skipped (requires Developer ID)."
+elif [[ "${SKIP_NOTARIZE:-0}" == "1" ]]; then
   echo "==> SKIP_NOTARIZE=1 — DMG signed but NOT notarized."
 elif xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
   echo "==> Notarizing DMG (profile: $NOTARY_PROFILE) — a few minutes..."
