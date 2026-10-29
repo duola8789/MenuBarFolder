@@ -17,6 +17,11 @@ enum AppInfo {
     static let github = "https://github.com/ilya000"
     static let license = "MIT"
 
+    /// Entry point for "Check for Updates": the latest published GitHub
+    /// release. Follows its redirect to /releases/tag/<tag>; public page, so
+    /// no REST-API rate limit applies.
+    static let updateLatestPageURL = "https://github.com/duola8789/MenuBarFolder/releases/latest"
+
     /// Lineage: the 1998 Windows ancestor of this app.
     static let heritageTitle = "Successor to TrayMenu (1998)"
     static let heritageURL = "https://old.osipov.ru/proge.htm"

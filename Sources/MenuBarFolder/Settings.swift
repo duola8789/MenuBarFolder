@@ -277,6 +277,18 @@ extension GeneralSettingsTab {
 // MARK: - About
 
 struct AboutView: View {
+
+    /// Outcome of the last user-triggered check; nil until the first one.
+    private enum CheckResult {
+        case upToDate(current: String)
+        case updateAvailable(version: String, url: URL)
+        case failed(reason: String)
+    }
+
+    @State private var checking = false
+    @State private var result: CheckResult?
+    @State private var showingResult = false
+
     var body: some View {
         VStack(spacing: 14) {
             Image(nsImage: AppIcon.make(size: 128))
@@ -297,6 +309,11 @@ struct AboutView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 8)
+
+            Button(checking ? "Checking…" : "Check for Updates") {
+                checkForUpdates()
+            }
+            .disabled(checking)
 
             Divider().padding(.vertical, 2)
 
@@ -320,6 +337,52 @@ struct AboutView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .alert(alertTitle, isPresented: $showingResult) {
+            if case .updateAvailable(_, let url) = result {
+                Button("Download") { NSWorkspace.shared.open(url) }
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(alertMessage)
+        }
+    }
+
+    private func checkForUpdates() {
+        checking = true
+        UpdateChecker.check { outcome in
+            checking = false
+            switch outcome {
+            case .upToDate(let current):
+                result = .upToDate(current: current)
+            case .updateAvailable(let version, let url):
+                result = .updateAvailable(version: version, url: url)
+            case .failed(let reason):
+                result = .failed(reason: reason)
+            }
+            showingResult = true
+        }
+    }
+
+    private var alertTitle: String {
+        switch result {
+        case .upToDate: return "You're Up to Date"
+        case .updateAvailable: return "Update Available"
+        case .failed: return "Check Failed"
+        case nil: return ""
+        }
+    }
+
+    private var alertMessage: String {
+        switch result {
+        case .upToDate(let current):
+            return "PinFold \(current) is the latest version."
+        case .updateAvailable(let version, _):
+            return "PinFold \(version) is available. You are running \(AppInfo.version)."
+        case .failed(let reason):
+            return reason
+        case nil:
+            return ""
+        }
     }
 }
 
