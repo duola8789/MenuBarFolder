@@ -89,8 +89,9 @@ echo "APPL????" > "$CONTENTS/PkgInfo"
 #   2. a free "Apple Development" cert from the Xcode Personal Team
 #   3. ad-hoc
 # Steps 1 and 2 both give a stable identity, so TCC grants and login items keep
-# working across rebuilds. Only step 1 can be notarized, and only step 1 lets a
-# downloaded copy launch without the user clearing quarantine.
+# working across rebuilds. Both are timestamped as well, so a signature stays
+# valid after its certificate expires. Only step 1 can be notarized, and only
+# step 1 lets a downloaded copy launch without the user clearing quarantine.
 SIGN_ID="${SIGN_ID:-}"
 SIGN_KIND=""
 [[ "$SIGN_ID" == "-" ]] && SIGN_KIND="ad-hoc"
@@ -124,8 +125,6 @@ if [[ -z "$SIGN_ID" ]]; then
   SIGN_ID="-"
   SIGN_KIND="ad-hoc"
   TS_ARGS=()   # --timestamp requires a real identity
-elif [[ "$SIGN_KIND" != "Developer ID Application" ]]; then
-  TS_ARGS=()   # timestamping is only meaningful for Developer ID
 fi
 
 if [[ "$SIGN_KIND" == "Apple Development" || "$SIGN_KIND" == "Apple Distribution" ]]; then
