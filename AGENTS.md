@@ -9,6 +9,10 @@
    `v<version>`（message 即 release notes）→ push tag。release 由 CI
    （`.github/workflows/release.yml`）自动构建发布，本地不再跑发布。
 4. release 文案使用中文   
+5. **未经老板明确同意，不得擅自 push**：包括 `git push origin main` 和推送
+   任何 tag（tag 会触发 CI 发版）。本地 commit 可以做，但推送前必须先说明
+   将要推送的内容并得到老板当次对话的明确同意；一次授权只对一次操作有效，
+   不能沿用之前的授权。
 
 ## 项目是什么
 
